@@ -1,0 +1,48 @@
+#!/usr/bin/python
+import sys
+from illuminate import InteropDataset
+import pandas as pd
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+#import seaborn as sns
+
+
+def intersect(a,b):	
+	return list(set(a) & set(b))
+
+def hist2dist(a):
+	total = a.sum(axis=1)
+	nparr = np.zeros((total,))
+	dist = pd.DataFrame(nparr,index = range(total))
+	i1, i2, mult = 0, 0, 0
+	for i in np.nditer(a.values):
+		mult += 1
+		if i > 0:
+			i2 = i1 + i
+			dist.ix[range(i1,i2),0] = mult
+			i1 = i2
+	return dist
+			
+script, dataset, tile, y1, y2 = sys.argv
+tile = int(tile)
+
+myDataset = InteropDataset(dataset)
+qm = myDataset.QualityMetrics()
+
+df = pd.DataFrame(qm.data)
+plot_data = pd.DataFrame()
+
+cycles = max(df['cycle'])
+
+for cycle in range(1,cycles+1):
+	dfct = df[(df['cycle'] == cycle) & (df['tile'] == tile)]
+	qs = ["q%d" % i for i in range(1,51)]
+	dist = hist2dist(dfct.loc[:,qs])
+	plot_data["%d" % cycle] = dist.ix[:,0]
+
+#sns.violinplot(x = plot_data[["%d" % i for i in range(1,51)]])
+ax = plot_data.plot(kind='box',sym='', xlim = (1,cycles+1), ylim = (int(y1),int(y2)), title = "Tile %d" % tile, grid = True)
+ax.set_xlabel('cycle')
+ax.set_ylabel('QC score')
+plt.show()
